@@ -1,10 +1,14 @@
 pub fn read_pgns(file_path: &str) -> Vec<Vec<String>> {
-    println!("INFO: reading from {file_path}");
-    let raw_pgns =
-        std::fs::read_to_string(file_path).expect("ERROR: should be able to read the file");
+    eprintln!("INFO: reading from {file_path}");
+
+    let raw_pgns = std::fs::read_to_string(file_path).expect(&format!(
+        "ERROR: should be able to read from: {}",
+        file_path
+    ));
 
     let split_pgns = split_pgns(&raw_pgns);
-    println!("INFO: got {} notations", split_pgns.len());
+    eprintln!("INFO: got {} notations", split_pgns.len());
+
     let move_sequences = split_pgns
         .iter()
         .map(|notation| move_sequence(notation))
@@ -19,19 +23,18 @@ fn move_sequence(notation: &str) -> Vec<String> {
     let last_space = notation
         .rfind(" ")
         .expect("PGN is quaranteed to have space");
-    //TODO: rewrite considering format difference between pgn
-    //maybe in imperative style
+
+    // PERF: consider optimization
     notation
         .split_at(last_space)
         .0
-        .trim()
-        .split_inclusive(" ")
-        .filter(|a| !char::is_numeric(a.chars().nth(0).expect("0 is alvays valid")))
+        .split_whitespace()
         .map(|ln| {
-            match ln.split_once(".") {
-                Some((_, suff)) => return suff,
-                None => return ln.trim(),
-            };
+            if !ln.contains(".") {
+                return ln;
+            }
+            let dot = ln.find(".").expect("should contain dot");
+            ln.split_at(dot + 1).1
         })
         .map(|ln| ln.trim())
         .map(String::from)

@@ -6,7 +6,7 @@ use rand::Rng;
 use crate::stockfish::Stockfish;
 
 pub fn lvl1_puzzle(moves: &Vec<String>, mut board: Board, stockfish: &mut Stockfish) -> Puzzle {
-    println!("INFO: generating lvl 1 puzzle");
+    eprintln!("INFO: generating lvl 1 puzzle");
     let len = moves.len();
     let mid = len / 2;
     let rand_move = rand::rng().random_range(mid..len - 1);
@@ -46,7 +46,7 @@ pub fn lvl1_puzzle(moves: &Vec<String>, mut board: Board, stockfish: &mut Stockf
         .collect::<String>();
     let best_move = binding.splitn(3, " ").collect::<Vec<_>>()[1];
 
-    println!("best move: {best_move}");
+    eprintln!("best move: {best_move}");
     stockfish.kill().expect("could not kill stockfish");
 
     let mut notation = moves[0..=rand_move].to_vec();
@@ -59,11 +59,7 @@ pub fn lvl1_puzzle(moves: &Vec<String>, mut board: Board, stockfish: &mut Stockf
     }
 }
 
-fn lvl2_puzzle<'a>() -> Puzzle {
-    todo!()
-}
-
-fn lvl3_puzzle<'a>() -> Puzzle {
+pub fn gen_puzzle(lvl: u8, moves: &str, board: Board, stockfish: Stockfish) -> Puzzle {
     todo!()
 }
 
@@ -73,4 +69,3 @@ pub struct Puzzle {
     pub start_pos: String,
     pub notation: Vec<String>,
 }
-
