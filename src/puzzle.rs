@@ -44,7 +44,7 @@ impl Display for PuzzleLevel {
 
 pub fn generate_puzzle(
     lvl: PuzzleLevel,
-    moves: &Vec<String>,
+    moves: &[String],
     board: Board,
     stockfish: &mut Stockfish,
 ) -> Puzzle {
@@ -72,12 +72,14 @@ fn get_slice(mut moves: Vec<String>) -> Vec<String> {
     moves.drain(0..=rand_move).collect()
 }
 
-fn generate_command(ref moves: &[String], mut board: Board) -> (String, String) {
+fn generate_command(moves: &[String], mut board: Board) -> (String, String) {
     for i in 0..moves.len() {
-        let chess_move = ChessMove::from_str(&moves[i]).expect(&format!(
-            "should be a valid move MOVE -> {}| INDEX -> {} | MOVES -> {moves:#?}",
-            &moves[i], i
-        ));
+        let chess_move = ChessMove::from_str(&moves[i]).unwrap_or_else(|_| {
+            panic!(
+                "should be a valid move MOVE -> {}| INDEX -> {} | MOVES -> {moves:#?}",
+                &moves[i], i
+            )
+        });
         board = board.make_move_new(chess_move);
     }
 
@@ -97,8 +99,8 @@ fn get_best_move(cmd: (String, String), stockfish: &mut Stockfish) -> String {
         panic!("can't reset stockfish");
     }
 
-    stockfish.stdin.write(cmd.0.as_bytes()).unwrap();
-    stockfish.stdin.write(cmd.1.as_bytes()).unwrap();
+    stockfish.stdin.write_all(cmd.0.as_bytes()).unwrap();
+    stockfish.stdin.write_all(cmd.1.as_bytes()).unwrap();
 
     loop {
         if std::str::from_utf8(&buffer).unwrap().contains("best") {

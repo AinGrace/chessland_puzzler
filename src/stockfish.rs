@@ -17,8 +17,8 @@ impl Stockfish {
     }
 
     pub fn reset(&mut self) -> Result<bool, Box<dyn Error>> {
-        self.stdin.write("ucinewgame\n".as_bytes())?;
-        self.stdin.write("isready\n".as_bytes())?;
+        self.stdin.write_all("ucinewgame\n".as_bytes())?;
+        self.stdin.write_all("isready\n".as_bytes())?;
 
         let mut buff = [0; 100];
         self.stdout.read(&mut buff)?;
@@ -35,7 +35,7 @@ impl Stockfish {
         let response = std::str::from_utf8(&buff)?;
 
         if response.contains("readyok") {
-            return Ok(true);
+            Ok(true)
         } else {
             Ok(false)
         }

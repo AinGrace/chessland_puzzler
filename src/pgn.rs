@@ -8,17 +8,17 @@ use chess::{Board, ChessMove};
 ///The function ensures that only valid move sequences are retained
 pub fn read_pgns(file_path: &str) -> Vec<Vec<String>> {
     let raw_pgns = fs::read_to_string(file_path)
-        .expect(&format!("should be able to read from: {}", file_path));
+        .unwrap_or_else(|_| panic!("should be able to read from: {}", file_path));
 
     let split_pgns = split_pgns(&raw_pgns);
     eprintln!("| got {} notations", split_pgns.len());
 
-    let move_sequences = split_pgns
+    let mut move_sequences: Vec<Vec<String>> = split_pgns
         .iter()
         .map(|notation| move_sequence(notation))
         .collect();
 
-    validate(move_sequences)
+    validate(&mut move_sequences)
 }
 
 /// splits pgns across Vector
@@ -73,13 +73,13 @@ fn move_sequence(notation: &str) -> Vec<String> {
 }
 
 /// validates pgn/s and transforms them to long algebraic notation from SAN
-fn validate(mut move_sequences: Vec<Vec<String>>) -> Vec<Vec<String>> {
+fn validate(move_sequences: &mut [Vec<String>]) -> Vec<Vec<String>> {
     eprintln!("| validating pgn/s");
 
     let mut buff = Vec::with_capacity(move_sequences.len());
 
-    'outer: for i in 0..move_sequences.len() {
-        if move_sequences[i].len() < 15 {
+    'outer: for (i, seq) in move_sequences.iter_mut().enumerate() {
+        if seq.len() < 15 {
             eprintln!(
                 "| ❌dropping notation {} as it's length is lower than 15",
                 i + 1
@@ -88,15 +88,13 @@ fn validate(mut move_sequences: Vec<Vec<String>>) -> Vec<Vec<String>> {
         }
 
         let mut board = Board::default();
-        let ref mut seq = move_sequences[i];
-
-        for j in 0..seq.len() {
-            let possible_move = ChessMove::from_san(&board, &seq[j]);
+        for (j, mv) in seq.iter_mut().enumerate() {
+            let possible_move = ChessMove::from_san(&board, mv);
             if possible_move.is_err() {
                 eprintln!(
                     "| ❌{}-th move [{}] of {}th notation is not valid, removing notation",
                     (j + 1) / 2,
-                    &seq[j],
+                    mv,
                     i + 1
                 );
 
@@ -104,11 +102,11 @@ fn validate(mut move_sequences: Vec<Vec<String>>) -> Vec<Vec<String>> {
             }
 
             let chess_move = possible_move.unwrap();
-            seq[j] = chess_move.to_string();
+            *mv = chess_move.to_string();
 
             board = board.make_move_new(chess_move);
         }
-        buff.push(move_sequences[i].clone());
+        buff.push(seq.clone());
     }
 
     eprintln!(
