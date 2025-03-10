@@ -13,12 +13,12 @@ pub fn read_pgns(file_path: &str) -> Vec<Vec<String>> {
     let split_pgns = split_pgns(&raw_pgns);
     eprintln!("| got {} notations", split_pgns.len());
 
-    let mut move_sequences: Vec<Vec<String>> = split_pgns
+    let move_sequences: Vec<Vec<String>> = split_pgns
         .iter()
         .map(|notation| move_sequence(notation))
         .collect();
 
-    validate(&mut move_sequences)
+    validate(move_sequences)
 }
 
 /// splits pgns across Vector
@@ -59,10 +59,10 @@ fn move_sequence(notation: &str) -> Vec<String> {
         .split_whitespace()
         .map(|mov| {
             // filter out | = | + | # |
-            let cleaned: String = mov
+            let cleaned = mov
                 .chars()
                 .filter(|&c| c != '+' && c != '#' && c != '=')
-                .collect();
+                .collect::<String>();
 
             match cleaned.find('.') {
                 Some(dot) => cleaned[(dot + 1)..].to_string(),
@@ -73,47 +73,38 @@ fn move_sequence(notation: &str) -> Vec<String> {
 }
 
 /// validates pgn/s and transforms them to long algebraic notation from SAN
-fn validate(move_sequences: &mut [Vec<String>]) -> Vec<Vec<String>> {
+fn validate(mut move_sequences: Vec<Vec<String>>) -> Vec<Vec<String>> {
     eprintln!("| validating pgn/s");
 
-    let mut buff = Vec::with_capacity(move_sequences.len());
-
-    'outer: for (i, seq) in move_sequences.iter_mut().enumerate() {
+    move_sequences.retain_mut(|seq| {
         if seq.len() < 15 {
-            eprintln!(
-                "| ❌dropping notation {} as it's length is lower than 15",
-                i + 1
-            );
-            continue;
+            eprintln!("| ❌dropping notation as its length is lower than 15");
+            return false;
         }
 
         let mut board = Board::default();
+
         for (j, mv) in seq.iter_mut().enumerate() {
-            let possible_move = ChessMove::from_san(&board, mv);
-            if possible_move.is_err() {
-                eprintln!(
-                    "| ❌{}-th move [{}] of {}th notation is not valid, removing notation",
-                    (j + 1) / 2,
-                    mv,
-                    i + 1
-                );
-
-                continue 'outer;
+            match ChessMove::from_san(&board, mv) {
+                Ok(chess_move) => {
+                    *mv = chess_move.to_string();
+                    board = board.make_move_new(chess_move);
+                }
+                Err(_) => {
+                    eprintln!(
+                        "| ❌{}-th move [{}] in notation is invalid, removing notation",
+                        (j + 1) / 2,
+                        mv
+                    );
+                    return false;
+                }
             }
-
-            let chess_move = possible_move.unwrap();
-            *mv = chess_move.to_string();
-
-            board = board.make_move_new(chess_move);
         }
-        buff.push(seq.clone());
-    }
 
-    eprintln!(
-        "|✅validated {} sequences out of {}",
-        buff.len(),
-        move_sequences.len()
-    );
+        true
+    });
 
-    buff
+    eprintln!("|✅validated {} sequences", move_sequences.len());
+
+    move_sequences
 }
