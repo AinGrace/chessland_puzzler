@@ -1,8 +1,4 @@
-use std::{
-    fmt::Display,
-    io::{Read, Write},
-    str::FromStr,
-};
+use std::{fmt::Display, fmt::Write, io::Read, str::FromStr};
 
 use chess::{Board, ChessMove};
 use rand::Rng;
@@ -11,25 +7,26 @@ use crate::stockfish::Stockfish;
 
 #[derive(Debug)]
 pub struct Puzzle {
-    pub lvl: u8,
-    pub start_pos: String,
-    pub notation: Vec<String>,
+    lvl: PuzzleLevel,
+    start_pos: String,
+    notation: Vec<String>,
 }
 
-pub enum PuzzleLevel {
-    Easy,
-    Medium,
-    Hard,
-}
-
-impl PuzzleLevel {
-    fn numeric(&self) -> u8 {
-        match self {
-            PuzzleLevel::Easy => 1,
-            PuzzleLevel::Medium => 2,
-            PuzzleLevel::Hard => 3,
-        }
+impl Display for Puzzle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let moves = self.notation.iter().fold(String::new(), |mut acc, mv| {
+            write!(acc, "{} ", mv).unwrap_or_else(|err| panic!("could not display puzzle: {err}"));
+            acc
+        });
+        writeln!(f, "{}|{}|{}", self.lvl, self.start_pos, moves)
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum PuzzleLevel {
+    Easy = 1,
+    Medium = 2,
+    Hard = 3,
 }
 
 impl Display for PuzzleLevel {
@@ -42,34 +39,30 @@ impl Display for PuzzleLevel {
     }
 }
 
-pub fn generate_puzzle(
-    lvl: PuzzleLevel,
-    moves: &[String],
-    board: Board,
-    stockfish: &mut Stockfish,
-) -> Puzzle {
-    let mut slice = get_slice(moves.to_vec());
-    let start_pos = slice.last().expect("should not be empty").clone();
+pub fn generate_puzzle(lvl: PuzzleLevel, moves: &[String], board: Board) -> Puzzle {
+    let mut move_set = get_move_set(moves);
+    let start_pos = move_set.last().expect("should not be empty").clone();
+    let lvl_num = lvl.clone() as u8;
 
-    for _ in 1..=lvl.numeric() {
-        let cmd = generate_command(&slice, board);
-        let best_move = get_best_move(cmd, stockfish);
-        slice.push(best_move);
+    for _ in 1..=lvl_num {
+        let cmd = generate_command(&move_set, board);
+        let best_move = get_best_move(cmd);
+        move_set.push(best_move);
     }
 
     Puzzle {
-        lvl: lvl.numeric(),
+        lvl,
         start_pos,
-        notation: slice,
+        notation: move_set,
     }
 }
 
-fn get_slice(mut moves: Vec<String>) -> Vec<String> {
+fn get_move_set(moves: &[String]) -> Vec<String> {
     let from = moves.len() / 3;
     let to = from * 2;
     let rand_move = rand::rng().random_range(from..to);
 
-    moves.drain(0..=rand_move).collect()
+    moves[0..=rand_move].to_vec()
 }
 
 fn generate_command(moves: &[String], mut board: Board) -> (String, String) {
@@ -86,40 +79,35 @@ fn generate_command(moves: &[String], mut board: Board) -> (String, String) {
     let depth = 1;
     let fen = format!("{board}");
 
-    let position_cmd = format!("position fen {fen}\n");
-    let go_cmd = format!("go depth {depth}\n");
+    let position_cmd = format!("position fen {fen}");
+    let go_cmd = format!("go depth {depth}");
 
     (position_cmd, go_cmd)
 }
 
-fn get_best_move(cmd: (String, String), stockfish: &mut Stockfish) -> String {
-    let mut buffer = [0; 100];
+fn get_best_move(cmd: (String, String)) -> String {
+    let mut buffer = String::new();
+    let mut stockfish = Stockfish::default();
 
-    if !stockfish.reset().unwrap() {
-        panic!("can't reset stockfish");
-    }
+    stockfish
+        .write(&cmd.0)
+        .unwrap_or_else(|err| panic!("can't write {} to stockfish: {err}", cmd.0));
 
-    stockfish.stdin.write_all(cmd.0.as_bytes()).unwrap();
-    stockfish.stdin.write_all(cmd.1.as_bytes()).unwrap();
+    stockfish
+        .write(&cmd.1)
+        .unwrap_or_else(|err| panic!("can't write {} to stockfish: {err}", cmd.1));
 
-    loop {
-        if std::str::from_utf8(&buffer).unwrap().contains("best") {
-            break;
-        }
+    let mut read_stockfish = stockfish.drop_write();
 
-        buffer.fill(0);
-        stockfish.stdout.read(&mut buffer).unwrap();
-    }
+    read_stockfish
+        .reader
+        .read_to_string(&mut buffer)
+        .unwrap_or_else(|err| panic!("can't write to buffer: {err}"));
 
-    let best_move = std::str::from_utf8(&buffer)
-        .unwrap()
+    let best_move: String = buffer
         .lines()
-        .filter_map(|ln| {
-            if ln.contains("bestmove") {
-                return Some(ln.split_whitespace().nth(1).unwrap());
-            }
-            None
-        })
+        .filter(|ln| ln.contains("bestmove"))
+        .map(|ln| ln.split_whitespace().nth(1).unwrap())
         .collect();
 
     best_move

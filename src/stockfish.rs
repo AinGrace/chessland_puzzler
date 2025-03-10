@@ -1,44 +1,32 @@
 use std::{
-    error::Error,
-    io::{Read, Write},
+    io::{self, BufReader, BufWriter, Write},
     process::{Child, ChildStdin, ChildStdout, Stdio},
 };
 
 pub struct Stockfish {
-    pub process: Child,
-    pub stdin: ChildStdin,
-    pub stdout: ChildStdout,
+    process: Child,
+    writer: BufWriter<ChildStdin>,
+    pub reader: BufReader<ChildStdout>,
 }
 
+pub struct RStockfish {
+    process: Child,
+    pub reader: BufReader<ChildStdout>,
+}
+
+// TODO: implement builder pattern
 impl Stockfish {
-    pub fn kill(mut self) -> Result<(), Box<dyn Error>> {
-        self.process.kill()?;
-        Ok(())
+    pub fn drop_write(self) -> RStockfish {
+        drop(self.writer);
+
+        RStockfish {
+            process: self.process,
+            reader: self.reader,
+        }
     }
 
-    pub fn reset(&mut self) -> Result<bool, Box<dyn Error>> {
-        self.stdin.write_all("ucinewgame\n".as_bytes())?;
-        self.stdin.write_all("isready\n".as_bytes())?;
-
-        let mut buff = [0; 100];
-        self.stdout.read(&mut buff)?;
-
-        for _ in 0..10 {
-            if std::str::from_utf8(&buff).unwrap().contains("readyok") {
-                break;
-            }
-
-            buff.fill(0);
-            self.stdout.read(&mut buff).unwrap();
-        }
-
-        let response = std::str::from_utf8(&buff)?;
-
-        if response.contains("readyok") {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+    pub fn write(&mut self, position: &str) -> io::Result<()> {
+        writeln!(self.writer, "{}", position)
     }
 }
 
@@ -53,10 +41,21 @@ impl Default for Stockfish {
         let stdin = stockfish.stdin.take().expect("stockfish stdin error");
         let stdout = stockfish.stdout.take().expect("stockfish stdout error");
 
+        let writer = BufWriter::new(stdin);
+        let reader = BufReader::new(stdout);
+
         Stockfish {
             process: stockfish,
-            stdin,
-            stdout,
+            writer,
+            reader,
         }
+    }
+}
+
+impl Drop for RStockfish {
+    fn drop(&mut self) {
+        self.process.kill().unwrap_or_else(|err| {
+            panic!("could not properly kill stockfish: {err}");
+        });
     }
 }

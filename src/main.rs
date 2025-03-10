@@ -4,7 +4,6 @@ use chess::Board;
 use chessland_puzzle_generator::{
     pgn,
     puzzle::{PuzzleLevel, generate_puzzle},
-    stockfish::Stockfish,
 };
 use rand::Rng;
 
@@ -18,9 +17,7 @@ fn main() {
 
     eprintln!("parsing notations");
     let notations = pgn::read_pgns(&args[1]); // split .pgn file across Vector
-    let mut stockfish = Stockfish::default();
     let mut puzzles = Vec::with_capacity(10); // temp value, for now generating only 10 puzzles
-
 
     eprintln!("generating easy puzzles");
     // easy puzzles
@@ -30,7 +27,6 @@ fn main() {
             PuzzleLevel::Easy,
             &notations[rand_notation],
             Board::default(),
-            &mut stockfish,
         ));
     }
 
@@ -42,7 +38,6 @@ fn main() {
             PuzzleLevel::Medium,
             &notations[rand_notation],
             Board::default(),
-            &mut stockfish,
         ));
     }
 
@@ -54,10 +49,16 @@ fn main() {
             PuzzleLevel::Hard,
             &notations[rand_notation],
             Board::default(),
-            &mut stockfish,
         ));
     }
 
     eprintln!("generated {} puzzles", puzzles.len());
-    fs::write("puzzles.txt", format!("{:#?}", puzzles)).expect("should write to a file")
+
+    let mut buffer = String::new();
+
+    for puzzl in puzzles {
+        buffer.push_str(&puzzl.to_string());
+    }
+
+    fs::write("puzzles.txt",  buffer).expect("should write to a file")
 }
