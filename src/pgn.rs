@@ -11,7 +11,7 @@ pub fn read_pgns(file_path: &str) -> Vec<Vec<String>> {
         .unwrap_or_else(|_| panic!("should be able to read from: {}", file_path));
 
     let split_pgns = split_pgns(&raw_pgns);
-    eprintln!("| got {} notations", split_pgns.len());
+    println!("| got {} notations", split_pgns.len());
 
     let move_sequences: Vec<Vec<String>> = split_pgns
         .iter()
@@ -74,7 +74,7 @@ fn move_sequence(notation: &str) -> Vec<String> {
 
 /// validates pgn/s and transforms them to long algebraic notation from SAN
 fn validate(mut move_sequences: Vec<Vec<String>>) -> Vec<Vec<String>> {
-    eprintln!("| validating pgn/s");
+    println!("| validating pgn/s");
 
     move_sequences.retain_mut(|seq| {
         if seq.len() < 15 {
@@ -104,7 +104,6 @@ fn validate(mut move_sequences: Vec<Vec<String>>) -> Vec<Vec<String>> {
         true
     });
 
-    eprintln!("|✅validated {} sequences", move_sequences.len());
-
+    println!("|✅validated {} sequences", move_sequences.len());
     move_sequences
 }
