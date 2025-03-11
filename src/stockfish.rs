@@ -96,3 +96,9 @@ impl StockfishBuilder {
         Ok(read_stockfish)
     }
 }
+
+impl Default for StockfishBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
