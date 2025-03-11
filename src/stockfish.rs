@@ -1,5 +1,4 @@
 use std::{
-    error::Error,
     fmt::Write as _,
     io::Write as _,
     io::{self, BufReader, BufWriter},
@@ -62,29 +61,18 @@ impl Drop for ReadStockfish {
     }
 }
 
+#[derive(Default)]
 pub struct StockfishBuilder {
-    errors: Vec<Box<dyn Error>>,
     commands: String,
 }
 
 impl StockfishBuilder {
-    pub fn new() -> StockfishBuilder {
-        StockfishBuilder {
-            errors: Vec::new(),
-            commands: String::new(),
-        }
-    }
-
     pub fn write(mut self, command: &str) -> Self {
-        let result = writeln!(self.commands, "{}", command);
-        if result.is_err() {
-            self.errors.push(Box::new(result.unwrap_err()));
-        }
-
+        writeln!(self.commands, "{}", command).expect("write to String can never fail");
         self
     }
 
-    pub fn build(self) -> Result<ReadStockfish, Box<dyn Error>> {
+    pub fn build(self) -> Result<ReadStockfish, io::Error> {
         let mut stockfish = Stockfish::default();
 
         for cmd in self.commands.lines() {
@@ -92,13 +80,6 @@ impl StockfishBuilder {
         }
 
         let read_stockfish = stockfish.drop_write();
-
         Ok(read_stockfish)
-    }
-}
-
-impl Default for StockfishBuilder {
-    fn default() -> Self {
-        Self::new()
     }
 }

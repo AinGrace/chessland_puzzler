@@ -91,7 +91,7 @@ fn generate_command(moves: &[String], mut board: Board) -> (String, String) {
 
 fn get_best_move(cmd: (String, String)) -> String {
     let mut buffer = String::new();
-    let mut stockfish = stockfish::StockfishBuilder::new()
+    let mut stockfish = stockfish::StockfishBuilder::default()
         .write(&cmd.0)
         .write(&cmd.1)
         .build()
