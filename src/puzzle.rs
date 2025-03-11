@@ -1,9 +1,13 @@
-use std::{fmt::Display, fmt::Write, io::Read, str::FromStr};
+use std::{
+    fmt::{Display, Write},
+    io::Read,
+    str::FromStr,
+};
 
 use chess::{Board, ChessMove};
 use rand::Rng;
 
-use crate::stockfish::Stockfish;
+use crate::stockfish;
 
 #[derive(Debug)]
 pub struct Puzzle {
@@ -87,19 +91,15 @@ fn generate_command(moves: &[String], mut board: Board) -> (String, String) {
 
 fn get_best_move(cmd: (String, String)) -> String {
     let mut buffer = String::new();
-    let mut stockfish = Stockfish::default();
-
-    stockfish
+    let mut stockfish = stockfish::StockfishBuilder::new()
         .write(&cmd.0)
-        .unwrap_or_else(|err| panic!("can't write {} to stockfish: {err}", cmd.0));
+        .write(&cmd.1)
+        .build()
+        .unwrap_or_else(|err| {
+            panic!("can't build read-only stockfish: {err}");
+        });
 
     stockfish
-        .write(&cmd.1)
-        .unwrap_or_else(|err| panic!("can't write {} to stockfish: {err}", cmd.1));
-
-    let mut read_stockfish = stockfish.drop_write();
-
-    read_stockfish
         .reader
         .read_to_string(&mut buffer)
         .unwrap_or_else(|err| panic!("can't write to buffer: {err}"));

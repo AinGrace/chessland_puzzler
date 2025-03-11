@@ -60,5 +60,5 @@ fn main() {
         buffer.push_str(&puzzl.to_string());
     }
 
-    fs::write("puzzles.txt",  buffer).expect("should write to a file")
+    fs::write("puzzles.txt", buffer).expect("should write to a file")
 }
