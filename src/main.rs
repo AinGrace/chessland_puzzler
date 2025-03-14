@@ -1,64 +1,75 @@
-use std::fs;
-
-use chess::Board;
 use chessland_puzzle_generator::{
     pgn,
-    puzzle::{PuzzleLevel, generate_puzzle},
+    puzzle::{self, PuzzleLevel, generate_puzzle_by_position_analysis},
+    stockfish::Stockfish,
 };
-use rand::Rng;
+use rand::{Rng, rng};
+use shakmaty::{Chess, Position, uci::UciMove};
+use std::{env, fs, str::FromStr};
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
         eprintln!("provide at least one argument");
         std::process::exit(1);
     }
 
-    eprintln!("parsing notations");
-    let notations = pgn::read_pgns(&args[1]); // split .pgn file across Vector
-    let mut puzzles = Vec::with_capacity(10); // temp value, for now generating only 10 puzzles
+    // split pgn/s across vector
+    let notations = pgn::read_pgns(&args[1]);
 
-    eprintln!("generating easy puzzles");
-    // easy puzzles
+    let mut stockfish = Stockfish::default();
+
+    // buffer for puzzles
+    let mut puzzles = String::new();
+
+    // generate easy puzzles
     for _ in 0..5 {
-        let rand_notation = rand::rng().random_range(0..notations.len());
-        puzzles.push(generate_puzzle(
-            PuzzleLevel::Easy,
-            &notations[rand_notation],
-            Board::default(),
-        ));
+        let random = rng().random_range(0..notations.len());
+        let puzzle = generate_puzzle_by_position_analysis(PuzzleLevel::Easy, &notations[random], &mut stockfish);
+
+        check_correctness(&puzzle);
+        puzzles.push_str(&puzzle.to_string());
     }
 
-    eprintln!("generating medium puzzles");
-    // medium puzzles
-    for _ in 0..3 {
-        let rand_notation = rand::rng().random_range(0..notations.len());
-        puzzles.push(generate_puzzle(
-            PuzzleLevel::Medium,
-            &notations[rand_notation],
-            Board::default(),
-        ));
+    // generate medium puzzles
+    for _ in 0..5 {
+        let random = rng().random_range(0..notations.len());
+        let puzzle = generate_puzzle_by_position_analysis(PuzzleLevel::Medium, &notations[random], &mut stockfish);
+
+        check_correctness(&puzzle);
+        puzzles.push_str(&puzzle.to_string());
     }
 
-    eprintln!("generating hard puzzles");
-    // hard puzzles
-    for _ in 0..2 {
-        let rand_notation = rand::rng().random_range(0..notations.len());
-        puzzles.push(generate_puzzle(
-            PuzzleLevel::Hard,
-            &notations[rand_notation],
-            Board::default(),
-        ));
+    // generate hard puzzles
+    for _ in 0..5 {
+        let random = rng().random_range(0..notations.len());
+        let puzzle = generate_puzzle_by_position_analysis(PuzzleLevel::Hard, &notations[random], &mut stockfish);
+
+        check_correctness(&puzzle);
+        puzzles.push_str(&puzzle.to_string());
     }
 
-    eprintln!("generated {} puzzles", puzzles.len());
+    eprintln!("generated {} puzzles", puzzles.lines().count());
+    fs::write("Puzzles.txt", puzzles).unwrap();
+}
 
-    let mut buffer = String::new();
+fn check_correctness(puzzle: &puzzle::Puzzle) {
+    let mut board = Chess::default();
 
-    for puzzl in puzzles {
-        buffer.push_str(&puzzl.to_string());
+    for mv in puzzle.notation.iter() {
+        let uci = UciMove::from_str(mv).unwrap_or_else(|err| {
+            eprintln!("{mv} is not valid uci move: {err}");
+            panic!()
+        });
+
+        let mov = uci.to_move(&board).unwrap_or_else(|err| {
+            eprintln!("cant convert {uci} to move: {err}");
+            panic!()
+        });
+        board = board.play(&mov).unwrap_or_else(|err| {
+            eprintln!("INVALID MOVE -> {err}");
+            panic!()
+        });
     }
-
-    fs::write("puzzles.txt", buffer).expect("should write to a file")
 }
