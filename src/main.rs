@@ -26,7 +26,11 @@ fn main() {
     // generate easy puzzles
     for _ in 0..5 {
         let random = rng().random_range(0..notations.len());
-        let puzzle = generate_puzzle_by_position_analysis(PuzzleLevel::Easy, &notations[random], &mut stockfish);
+        let puzzle = generate_puzzle_by_position_analysis(
+            PuzzleLevel::Easy,
+            &notations[random],
+            &mut stockfish,
+        );
 
         check_correctness(&puzzle);
         puzzles.push_str(&puzzle.to_string());
@@ -35,7 +39,11 @@ fn main() {
     // generate medium puzzles
     for _ in 0..5 {
         let random = rng().random_range(0..notations.len());
-        let puzzle = generate_puzzle_by_position_analysis(PuzzleLevel::Medium, &notations[random], &mut stockfish);
+        let puzzle = generate_puzzle_by_position_analysis(
+            PuzzleLevel::Medium,
+            &notations[random],
+            &mut stockfish,
+        );
 
         check_correctness(&puzzle);
         puzzles.push_str(&puzzle.to_string());
@@ -44,7 +52,11 @@ fn main() {
     // generate hard puzzles
     for _ in 0..5 {
         let random = rng().random_range(0..notations.len());
-        let puzzle = generate_puzzle_by_position_analysis(PuzzleLevel::Hard, &notations[random], &mut stockfish);
+        let puzzle = generate_puzzle_by_position_analysis(
+            PuzzleLevel::Hard,
+            &notations[random],
+            &mut stockfish,
+        );
 
         check_correctness(&puzzle);
         puzzles.push_str(&puzzle.to_string());
