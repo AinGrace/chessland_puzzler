@@ -123,13 +123,13 @@ pub fn generate_puzzle_by_position_analysis(
 
         side_to_move = board.turn();
 
-        let pos = PuzzleCandidate {
+        let candidate = PuzzleCandidate {
             original_pos: pos_data,
             delta,
             side_to_move,
         };
 
-        positions_and_eval.push(pos);
+        positions_and_eval.push(candidate);
     }
 
     // Find the position with the highest evaluation difference

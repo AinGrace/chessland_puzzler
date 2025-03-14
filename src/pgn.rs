@@ -41,7 +41,7 @@ fn split_pgns(pgns: &str) -> Vec<String> {
     // Remove metadata and empty lines
     let formatted_pgns = strip_metadata(pgns);
 
-    let mut lines = Vec::new();
+    let mut notation = Vec::new();
     let mut line = String::new();
 
     // Combine lines and split at game result markers
@@ -49,11 +49,11 @@ fn split_pgns(pgns: &str) -> Vec<String> {
         line.push_str(ln);
         // Check for game ending markers
         if ln.contains("1-0") || ln.contains("0-1") || ln.contains("1/2") {
-            lines.push(std::mem::take(&mut line));
+            notation.push(std::mem::take(&mut line));
         }
     }
 
-    lines
+    notation
 }
 
 /// Removes metadata lines and empty lines from PGN content
@@ -90,9 +90,9 @@ fn move_sequence(notation: &str) -> Vec<String> {
     // Split the notation into moves and remove move numbers
     notation[..last_space]
         .split_whitespace()
-        .map(|mov| match mov.find('.') {
-            Some(dot) => mov[(dot + 1)..].to_string(), // Remove move number (e.g., "1." from "1.e4")
-            None => mov.to_string(),                   // Keep the move as is if no dot found
+        .map(|mv| match mv.find('.') {
+            Some(dot) => mv[(dot + 1)..].to_string(), // Remove move number (e.g., "1." from "1.e4")
+            None => mv.to_string(),                   // Keep the move as is if no dot found
         })
         .collect()
 }
