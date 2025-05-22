@@ -1,87 +1,40 @@
-use chessland_puzzle_generator::{
-    pgn,
-    puzzle::{self, PuzzleLevel, generate_puzzle_by_position_analysis},
-    stockfish::Stockfish,
-};
-use rand::{Rng, rng};
-use shakmaty::{Chess, Position, uci::UciMove};
-use std::{env, fs, str::FromStr};
+use chessland_puzzle_generator::http::app::app;
+use chessland_puzzle_generator::{common::config::Config, domain::stockfish::Stockfish};
+use tracing::{error, info};
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
+#[tokio::main]
+async fn main() {
+    tracing_subscriber::fmt::init();
+    info!("Welcome to puzzler");
 
-    if args.len() < 2 {
-        eprintln!("provide at least one argument");
-        std::process::exit(1);
-    }
+    let conf = match Config::load() {
+        Ok(conf) => {
+            info!("Loaded config");
+            conf
+        }
+        Err(_) => {
+            panic!("unable to get config")
+        }
+    };
 
-    // split pgn/s across vector
-    let notations = pgn::read_pgns(&args[1]);
+    let stockfish = match Stockfish::try_init() {
+        Ok(stockfish) => {
+            info!("initialized stockfish");
+            stockfish
+        }
+        Err(_) => {
+            error!("can't initialize stockfish, aborting...");
+            panic!();
+        }
+    };
 
-    let mut stockfish = Stockfish::default();
+    let app = app(&conf, stockfish);
 
-    // buffer for puzzles
-    let mut puzzles = String::new();
+    let listener = tokio::net::TcpListener::bind(format!("{}:{}", conf.host, conf.port))
+        .await
+        .unwrap();
 
-    // generate easy puzzles
-    for _ in 0..5 {
-        let random = rng().random_range(0..notations.len());
-        let puzzle = generate_puzzle_by_position_analysis(
-            PuzzleLevel::Easy,
-            &notations[random],
-            &mut stockfish,
-        );
-
-        check_correctness(&puzzle);
-        puzzles.push_str(&puzzle.to_string());
-    }
-
-    // generate medium puzzles
-    for _ in 0..5 {
-        let random = rng().random_range(0..notations.len());
-        let puzzle = generate_puzzle_by_position_analysis(
-            PuzzleLevel::Medium,
-            &notations[random],
-            &mut stockfish,
-        );
-
-        check_correctness(&puzzle);
-        puzzles.push_str(&puzzle.to_string());
-    }
-
-    // generate hard puzzles
-    for _ in 0..5 {
-        let random = rng().random_range(0..notations.len());
-        let puzzle = generate_puzzle_by_position_analysis(
-            PuzzleLevel::Hard,
-            &notations[random],
-            &mut stockfish,
-        );
-
-        check_correctness(&puzzle);
-        puzzles.push_str(&puzzle.to_string());
-    }
-
-    eprintln!("generated {} puzzles", puzzles.lines().count());
-    fs::write("Puzzles.txt", puzzles).unwrap();
-}
-
-fn check_correctness(puzzle: &puzzle::Puzzle) {
-    let mut board = Chess::default();
-
-    for mv in puzzle.notation.iter() {
-        let uci = UciMove::from_str(mv).unwrap_or_else(|err| {
-            eprintln!("{mv} is not valid uci move: {err}");
-            panic!()
-        });
-
-        let mov = uci.to_move(&board).unwrap_or_else(|err| {
-            eprintln!("cant convert {uci} to move: {err}");
-            panic!()
-        });
-        board = board.play(&mov).unwrap_or_else(|err| {
-            eprintln!("INVALID MOVE -> {err}");
-            panic!()
-        });
-    }
+    info!("listening on port {}", conf.port);
+    info!("puzzler is up and running");
+    axum::serve(listener, app).await.unwrap();
 }
